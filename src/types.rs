@@ -1,53 +1,90 @@
-enum Rule {
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Rule {
     Leader,
     Follower,
-    Candidater,
+    Candidater(u32),
 }
 
-enum Message {
+#[derive(Serialize, Deserialize)]
+pub enum Message {
     Log(AppendEntry),
     HeartBeat(AppendEntry),
-    Reply,
+    AppendEntryReply(AppendEntryReply),
     RequestVote(RequestVote),
-    VoteFor(bool),
+    //(bool, term)
+    VoteFor(Vote),
 }
 
-struct AppendEntry {
-    term: u32,
-    leader_id: u32,
-    pre_log_index: u32,
-    pre_log_term: u32,
-    entries: Vec<Entry>,
+#[derive(Serialize, Deserialize, Default)]
+pub struct AppendEntry {
+    pub term: u32,
+    pub leader_addr: String,
+    pub pre_log_index: u32,
+    pub pre_log_term: u32,
+    pub entries: Vec<Entry>,
 }
 
-struct Entry {
+#[derive(Serialize, Deserialize, Default)]
+pub struct AppendEntryReply {
+    pub term: u32,
+    pub addr: String,
+    pub success: bool,
+    pub apply_index: u32,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct Entry {
     term: u32,
     data: Vec<u8>,
 }
 
-struct Reply {
+pub struct Reply {
     term: u32,
     is_success: bool,
 }
-struct RequestVote {
-    term: u32,
-    id: u32,
-    cur_index: u32,
-    cur_term: u32,
+
+#[derive(Serialize, Deserialize)]
+pub struct RequestVote {
+    pub term: u32,
+    pub addr: String,
+    pub cur_index: u32,
+    pub cur_term: u32,
 }
 
-struct Vote {
-    term: u32,
-    vote_granted: bool,
+#[derive(Serialize, Deserialize)]
+pub struct Vote {
+    pub term: u32,
+    pub vote_granted: bool,
 }
 
-struct State {
-    rule: Rule,
-    log: Vec<AppendEntry>,
-    leader_id: Option<u32>,
-    commit_index: u32,
+pub struct State {
+    pub rule: Rule,
+    pub term: u32,
+    pub vote_for: Option<String>,
+    //(term, index, log)
+    pub log: Vec<(u32, u32, AppendEntry)>,
+    pub leader_id: Option<u32>,
+    pub commit_index: u32,
 
     //Volatile state on leaders
-    next_index: Option<Vec<u32>>,
-    match_index: Option<Vec<u32>>,
+    pub next_index: Option<Vec<u32>>,
+    pub match_index: Option<Vec<u32>>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            rule: Rule::Follower,
+            term: 0u32,
+            vote_for: None,
+            log: Vec::new(),
+            leader_id: None,
+            commit_index: 0u32,
+
+            next_index: None,
+            match_index: None,
+        }
+    }
 }
